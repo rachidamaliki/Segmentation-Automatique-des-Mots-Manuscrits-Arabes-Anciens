@@ -12,6 +12,7 @@
 ║  Loss      : CTC (44 classes)                                    ║
 ╚══════════════════════════════════════════════════════════════════╝
 
+
 """
 
 import tensorflow as tf
@@ -92,17 +93,32 @@ def build_cnn_blstm(num_classes: int = 44,
 
     # ── RESHAPE : (B, H', W', C) → (B, W', H'×C) ────────────────
     # d2 shape : (batch, 8, 32, 128)
-    # On veut une séquence temporelle de longueur T = W' = 32
-    # avec features = H' × C = 8 × 128 = 1024
-    H_dec = img_height // (2 ** 5)   # 64 / 32 = 2
-    W_dec = img_width  // (2 ** 3)   # 256 / 8 = 32   (après 5 pool puis 2 dec)
-    # Note : après 5 MaxPool : W=8 ; après 2 ConvTranspose×2 : W=8×4=32 ✓
+    #
+    # Traçage des dimensions :
+    #   Entrée       : H=64,  W=256
+    #   Après 5 pool : H=2,   W=8      (divisé par 2^5 = 32)
+    #   Après 2 dec  : H=8,   W=32     (multiplié par 2^2 = 4)
+    #   → d2 shape   : (batch, H=8, W=32, C=128)
+    #
+    # On permute pour avoir W en axe 1 (axe temporel des LSTM)
+    # puis on aplatit H et C en un seul vecteur de features
+    #
+    #   T    = W après décodeur = img_width  // 2**3 = 32
+    #   feat = H après décodeur = img_height // 2**3 = 8  → × 128 = 1024
+    #
+    # ⚠️  ERREUR CORRIGÉE :
+    #   Avant : H_dec = img_height // 2**5 = 2  (H après pool seulement, sans upsample)
+    #   Après : H_dec = img_height // 2**3 = 8  (H après pool ET 2 ConvTranspose)
 
-    # Permuter H et W pour avoir la séquence sur l'axe W
+    T_seq = img_width  // (2 ** 3)   # 256 // 8  = 32  (longueur séquence)
+    H_dec = img_height // (2 ** 3)   # 64  // 8  = 8   (hauteur après décodeur)
+    feat  = H_dec * 128              # 8   × 128 = 1024
+
+    # Permute : (batch, H=8, W=32, C=128) → (batch, W=32, H=8, C=128)
     x = layers.Permute((2, 1, 3), name="permute")(d2)
-    # (batch, 32, 8, 128)
-    x = layers.Reshape((W_dec, H_dec * 128), name="reshape")(x)
-    # (batch, 32, 1024) → T=32, features=1024
+    # Reshape : (batch, 32, 8, 128) → (batch, 32, 1024)
+    x = layers.Reshape((T_seq, feat), name="reshape")(x)
+    # → (batch, T=32, features=1024)
 
     # ── Dense(256) → BN → Dropout(0.2)  [avant les BLSTM] ───────
     x = layers.Dense(256, use_bias=False, name="pre_dense")(x)

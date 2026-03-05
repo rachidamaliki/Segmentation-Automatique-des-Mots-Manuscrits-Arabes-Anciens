@@ -52,7 +52,7 @@ CONFIG = {
     "LR_DECAY"    : 0.02,       # 2% par epoch
     "LR_START"    : 50,         # Epoch de début de décroissance
 
-    # Modèle (corrigé selon Fig. 2)
+    # Modèle (selon Fig. 2)
     "NUM_CLASSES" : NUM_CLASSES,  # 45 (44 chars + 1 blank)
 
     # Sauvegarde
@@ -228,7 +228,7 @@ def run_eval(model, dataset, batch_size, n_batches, T_seq):
 # ═════════════════════════════════════════════════════════════════
 def train():
     print("\n" + "═" * 62)
-    print("  CNN-BLSTM CORRIGÉ — Article 2024 (Bouchal & Belaid)")
+    print("  CNN-BLSTM — Article 2024 (Bouchal & Belaid)")
     print(f"  TensorFlow {tf.__version__}  |  GPU : "
           f"{'Oui ✅' if tf.config.list_physical_devices('GPU') else 'Non (CPU)'}")
     print("═" * 62)
